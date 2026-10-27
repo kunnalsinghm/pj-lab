@@ -1,0 +1,266 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Department {
+  id String @id @default(cuid())
+  name String @unique
+  institution String
+  createdAt DateTime @default(now())
+  programs Program[]
+  users User[]
+  announcements Announcement[]
+}
+
+model Program {
+  id String @id @default(cuid())
+  name String
+  level String
+  departmentId String
+  department Department @relation(fields: [departmentId], references: [id])
+  students StudentProfile[]
+  @@unique([departmentId, name])
+}
+
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  passwordHash String
+  name String
+  role String // STUDENT|FACULTY|COORDINATOR|HOD
+  active Boolean @default(true)
+  departmentId String?
+  department Department? @relation(fields: [departmentId], references: [id])
+  student StudentProfile?
+  faculty FacultyProfile?
+  notifications Notification[]
+  auditLogs AuditLog[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AcademicTerm {
+  id String @id @default(cuid())
+  year String
+  semester Int
+  current Boolean @default(false)
+  requests ActivityRequest[]
+  @@unique([year, semester])
+}
+
+model StudentProfile {
+  id String @id @default(cuid())
+  userId String @unique
+  enrollmentNo String @unique
+  level String
+  semester Int
+  batch String
+  cgpa Float @default(0)
+  status String @default("ACTIVE")
+  programId String
+  advisorId String?
+  user User @relation(fields: [userId], references: [id])
+  program Program @relation(fields: [programId], references: [id])
+  advisor FacultyProfile? @relation(fields: [advisorId], references: [id])
+  preferences ProjectPreference[]
+  allocations ProjectAllocation[]
+  reports ProgressReport[]
+  @@index([level])
+}
+
+model FacultyProfile {
+  id String @id @default(cuid())
+  userId String @unique
+  employeeId String @unique
+  designation String
+  researchInterests String @default("")
+  user User @relation(fields: [userId], references: [id])
+  advisees StudentProfile[]
+  projects Project[]
+  reviews ActivityRequest[]
+}
+
+model ActivityType {
+  id String @id @default(cuid())
+  name String @unique
+  requiresHod Boolean @default(false)
+  active Boolean @default(true)
+  workflowId String?
+  workflow WorkflowDefinition? @relation(fields: [workflowId], references: [id])
+  requests ActivityRequest[]
+}
+
+model WorkflowDefinition {
+  id String @id @default(cuid())
+  name String @unique
+  stages WorkflowStage[]
+  types ActivityType[]
+}
+
+model WorkflowStage {
+  id String @id @default(cuid())
+  workflowId String
+  position Int
+  role String
+  name String
+  workflow WorkflowDefinition @relation(fields: [workflowId], references: [id])
+  @@unique([workflowId, position])
+}
+
+model ActivityRequest {
+  id String @id @default(cuid())
+  code String @unique
+  title String
+  description String
+  status String @default("DRAFT")
+  applicantId String
+  typeId String
+  termId String
+  reviewerId String?
+  remarks String?
+  submittedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  type ActivityType @relation(fields: [typeId], references: [id])
+  term AcademicTerm @relation(fields: [termId], references: [id])
+  reviewer FacultyProfile? @relation(fields: [reviewerId], references: [id])
+  actions ApprovalAction[]
+  attachments Attachment[]
+  @@index([status])
+  @@index([applicantId])
+}
+
+model ApprovalAction {
+  id String @id @default(cuid())
+  requestId String
+  actorId String
+  action String
+  fromStatus String
+  toStatus String
+  remarks String?
+  at DateTime @default(now())
+  request ActivityRequest @relation(fields: [requestId], references: [id])
+  @@index([requestId])
+}
+
+model Attachment {
+  id String @id @default(cuid())
+  requestId String
+  fileName String
+  path String
+  request ActivityRequest @relation(fields: [requestId], references: [id])
+}
+
+model Project {
+  id String @id @default(cuid())
+  title String
+  description String
+  domain String
+  prerequisites String @default("")
+  capacity Int
+  eligibleLevels String // "UG,PG"
+  open Boolean @default(true)
+  supervisorId String
+  supervisor FacultyProfile @relation(fields: [supervisorId], references: [id])
+  preferences ProjectPreference[]
+  allocations ProjectAllocation[]
+  milestones ProjectMilestone[]
+}
+
+model ProjectPreference {
+  id String @id @default(cuid())
+  studentId String
+  projectId String
+  rank Int
+  statement String @default("")
+  student StudentProfile @relation(fields: [studentId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+  @@unique([studentId, projectId])
+  @@unique([studentId, rank])
+}
+
+model AllocationRound {
+  id String @id @default(cuid())
+  name String
+  status String @default("OPEN") // OPEN|PREVIEWED|PENDING_HOD|PUBLISHED|REJECTED
+  deadline DateTime?
+  allocations ProjectAllocation[]
+}
+
+model ProjectAllocation {
+  id String @id @default(cuid())
+  roundId String
+  studentId String
+  projectId String
+  rank Int?
+  active Boolean @default(true)
+  reason String?
+  createdAt DateTime @default(now())
+  round AllocationRound @relation(fields: [roundId], references: [id])
+  student StudentProfile @relation(fields: [studentId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+  @@index([studentId, active])
+}
+
+model ProjectMilestone {
+  id String @id @default(cuid())
+  projectId String
+  title String
+  dueDate DateTime
+  project Project @relation(fields: [projectId], references: [id])
+  reports ProgressReport[]
+}
+
+model ProgressReport {
+  id String @id @default(cuid())
+  milestoneId String
+  studentId String
+  summary String
+  status String @default("SUBMITTED")
+  feedback String?
+  at DateTime @default(now())
+  milestone ProjectMilestone @relation(fields: [milestoneId], references: [id])
+  student StudentProfile @relation(fields: [studentId], references: [id])
+}
+
+model Notification {
+  id String @id @default(cuid())
+  userId String
+  message String
+  link String?
+  read Boolean @default(false)
+  at DateTime @default(now())
+  user User @relation(fields: [userId], references: [id])
+  @@index([userId, read])
+}
+
+model Announcement {
+  id String @id @default(cuid())
+  title String
+  body String
+  departmentId String
+  publishedAt DateTime @default(now())
+  department Department @relation(fields: [departmentId], references: [id])
+}
+
+model AuditLog {
+  id String @id @default(cuid())
+  actorId String?
+  action String
+  entity String
+  entityId String?
+  detail String?
+  at DateTime @default(now())
+  actor User? @relation(fields: [actorId], references: [id])
+  @@index([entity, entityId])
+}
+
+model DepartmentSetting {
+  key String @id
+  value String
+}

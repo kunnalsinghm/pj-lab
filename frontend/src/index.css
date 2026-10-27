@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { @apply bg-slate-100 text-slate-800 antialiased; font-family: Inter, ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; }
+
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply bg-teal-600 text-white hover:bg-teal-700; }
+  .btn-ghost { @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
+  .btn-danger { @apply bg-rose-600 text-white hover:bg-rose-700; }
+  .input { @apply w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500; }
+  .card { @apply rounded-lg border border-slate-200 bg-white shadow-sm; }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "deptflow",
+  "private": true,
+  "version": "0.3.0",
+  "scripts": {
+    "setup": "npm install --prefix backend && npm install --prefix frontend && node scripts/setup.mjs",
+    "dev": "node scripts/dev.mjs",
+    "dev:api": "npm run dev --prefix backend",
+    "dev:web": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "test": "npm test --prefix backend",
+    "test:core": "node --test \"backend/tests/*.test.ts\"",
+    "db:reset": "npm run db:reset --prefix backend"
+  }
+}

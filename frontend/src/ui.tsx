@@ -34,7 +34,8 @@ const TONES: Record<string, string> = {
   REJECTED: "bg-rose-100 text-rose-700", CANCELLED: "bg-slate-200 text-slate-600", OPEN: "bg-teal-100 text-teal-700",
   PREVIEWED: "bg-sky-100 text-sky-700", PUBLISHED: "bg-emerald-100 text-emerald-700", UG: "bg-sky-100 text-sky-700", PG: "bg-violet-100 text-violet-700",
 };
-export const label = (s: string) => String(s ?? "").replace(/_/g, " ").toLowerCase().replace(/^\w/, c => c.toUpperCase());
+const ACRONYMS = new Set(["HOD", "UG", "PG", "CGPA"]);
+export const label = (s: string) => String(s ?? "").replace(/_/g, " ").split(" ").map((w, i) => ACRONYMS.has(w.toUpperCase()) ? w.toUpperCase() : i === 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase()).join(" ");
 export const Badge = ({ s }: { s: string }) => <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${TONES[s] ?? "bg-slate-100 text-slate-700"}`}>{label(s)}</span>;
 export const fmt = (d?: string | null) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "-");
 export const fmtT = (d?: string | null) => (d ? new Date(d).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "-");

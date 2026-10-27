@@ -3,12 +3,17 @@ import { api } from "../api";
 import { useAuth } from "../auth";
 import { Badge, Card, Empty, ErrorBox, Field, Page, Spinner, useFetch, useToast } from "../ui";
 
-function PrefForm({ p, onDone }: { p: any; onDone: () => void }) {
-  const toast = useToast(); const [rank, setRank] = useState(1), [statement, setStatement] = useState("");
+function PrefForm({ p, prefs, onDone }: { p: any; prefs: any[]; onDone: () => void }) {
+  const toast = useToast();
+  const mine = prefs.find(x => x.projectId === p.id);
+  const firstFree = [1, 2, 3].find(n => !prefs.some(x => x.rank === n)) ?? 1;
+  const [rank, setRank] = useState(mine?.rank ?? firstFree), [statement, setStatement] = useState(mine?.statement ?? "");
+  const clash = prefs.find(x => x.rank === rank && x.projectId !== p.id); // saving would replace this one
   const go = async () => { try { await api(`/projects/${p.id}/preferences`, { method: "POST", body: { rank, statement } }); toast("Preference saved"); onDone(); } catch (e: any) { toast(e.message, "error"); } };
   return (
     <div className="mt-3 space-y-2 rounded-md bg-slate-50 p-3">
       <Field label="Rank"><select className="input" value={rank} onChange={e => setRank(+e.target.value)}>{[1, 2, 3].map(n => <option key={n} value={n}>{n}{n === 1 ? " (top choice)" : ""}</option>)}</select></Field>
+      {clash && <p className="rounded-md bg-amber-50 p-2 text-xs text-amber-800">Saving will replace your current #{clash.rank}: {clash.project.title}.</p>}
       <Field label="Statement of interest"><textarea className="input" value={statement} onChange={e => setStatement(e.target.value)} /></Field>
       <button className="btn btn-primary" onClick={go}>Save preference</button>
     </div>
@@ -40,6 +45,7 @@ export default function Projects() {
   const [draft, setDraft] = useState(""), [q, setQ] = useState(""), [open, setOpen] = useState<string | null>(null), [creating, setCreating] = useState(false);
   const { data, loading, error, reload } = useFetch<any[]>(`/projects?q=${encodeURIComponent(q)}`);
   const prefs = useFetch<any[]>(user.role === "STUDENT" ? "/preferences" : null);
+  const myPrefs: any[] = prefs.data ?? [];
   const remove = async (id: string) => { try { await api(`/projects/${id}/preferences`, { method: "DELETE" }); toast("Preference removed"); prefs.reload(); } catch (e: any) { toast(e.message, "error"); } };
   return (
     <Page title="Research projects" subtitle="Browse projects, check seats and supervisors" actions={user.role === "FACULTY" && <button className="btn btn-primary" onClick={() => setCreating(c => !c)}>{creating ? "Close" : "New project"}</button>}>
@@ -59,8 +65,12 @@ export default function Projects() {
               <div className="mt-1 text-xs text-slate-500">{p.supervisorName} · {p.domain}</div>
               <p className="mt-2 line-clamp-3 text-sm text-slate-600">{p.description}</p>
               <div className="mt-2 flex flex-wrap gap-1">{p.eligibleLevels.split(",").map((l: string) => <Badge key={l} s={l} />)}<span className="text-xs text-slate-500">{p.taken}/{p.capacity} filled</span></div>
-              {user.role === "STUDENT" && <button className="btn btn-ghost mt-3" onClick={() => setOpen(open === p.id ? null : p.id)}>Rank this project</button>}
-              {open === p.id && <PrefForm p={p} onDone={() => { setOpen(null); prefs.reload(); }} />}
+              {user.role === "STUDENT" && (() => {
+                const mine = myPrefs.find(x => x.projectId === p.id);
+                const full = p.seatsLeft <= 0 && !mine;
+                return <button className="btn btn-ghost mt-3" disabled={full} title={full ? "No seats left" : undefined} onClick={() => setOpen(open === p.id ? null : p.id)}>{mine ? `Ranked #${mine.rank} · change` : full ? "Full" : "Rank this project"}</button>;
+              })()}
+              {open === p.id && <PrefForm p={p} prefs={myPrefs} onDone={() => { setOpen(null); prefs.reload(); }} />}
             </div>
           ))}
         </div>
